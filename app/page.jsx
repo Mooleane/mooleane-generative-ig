@@ -10,12 +10,12 @@ export default function Home() {
             padding: 24,
             gap: 24,
         }}>
-            <div style={{textAlign: 'center'}}>
-                <h1 style={{fontSize: 40, margin: 0}}>Welcome to Next.js!</h1>
-                <p style={{marginTop: 8, color: '#444'}}>Get started by editing <code style={{background: '#f3f4f6', padding: '2px 6px', borderRadius: 6}}>app/page.jsx</code></p>
+            <div style={{ textAlign: 'center' }}>
+                <h1 style={{ fontSize: 40, margin: 0 }}>Welcome to Next.js!</h1>
+                <p style={{ marginTop: 8, color: '#444' }}>Get started by editing <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 6 }}>app/page.jsx</code></p>
             </div>
 
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, width: '100%', maxWidth: 920}}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, width: '100%', maxWidth: 920 }}>
                 <a href="https://nextjs.org/docs" style={cardStyle} target="_blank" rel="noreferrer">Docs →<p style={cardDesc}>Find in-depth information about Next.js features and API.</p></a>
                 <a href="https://nextjs.org/learn" style={cardStyle} target="_blank" rel="noreferrer">Learn →<p style={cardDesc}>Learn about Next.js in an interactive course with quizzes!</p></a>
                 <a href="https://github.com/vercel/next.js/tree/canary/examples" style={cardStyle} target="_blank" rel="noreferrer">Examples →<p style={cardDesc}>Discover boilerplates and example projects to jumpstart your app.</p></a>
