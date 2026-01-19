@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 export default function Home() {
+    const { data: session } = useSession()
     const [prompt, setPrompt] = useState("")
     const [loading, setLoading] = useState(false)
     const [imageUrl, setImageUrl] = useState(null)
@@ -94,9 +96,23 @@ export default function Home() {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <button onClick={generateImage} disabled={loading || !prompt.trim()} style={buttonStyle}>{loading ? 'Generating…' : 'Generate'}</button>
-                        <button onClick={publishImage} disabled={!imageUrl || publishing} style={{ ...buttonStyle, background: publishing ? '#ddd' : '#eee', color: publishing ? '#666' : '#333' }}>{publishing ? 'Publishing…' : 'Publish'}</button>
+                        <button onClick={session ? publishImage : () => signIn()} disabled={!imageUrl || publishing} style={{ ...buttonStyle, background: publishing ? '#ddd' : '#eee', color: publishing ? '#666' : '#333' }}>{session ? (publishing ? 'Publishing…' : 'Publish') : 'Sign in to publish'}</button>
                         <a href="/feed" style={{ textDecoration: 'none', color: '#0366d6', alignSelf: 'center', marginTop: 8 }}>View Feed</a>
                     </div>
+                </div>
+
+                <div style={{ marginTop: 8 }}>
+                    {session ? (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <img src={session.user.image || ''} alt="avatar" style={{ width: 32, height: 32, borderRadius: 999 }} />
+                            <span style={{ color: '#333' }}>Signed in as {session.user.email || session.user.name}</span>
+                            <button onClick={() => signOut()} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6 }}>Sign out</button>
+                        </div>
+                    ) : (
+                        <div>
+                            <button onClick={() => signIn()} style={{ padding: '6px 10px', borderRadius: 6 }}>Sign in with Google</button>
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ marginTop: 18 }}>

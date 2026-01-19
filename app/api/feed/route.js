@@ -1,4 +1,6 @@
 import { prisma } from '../../../lib/prisma'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '../auth/[...nextauth]/route'
 
 export async function GET(request) {
     try {
@@ -25,7 +27,17 @@ export async function GET(request) {
         const total = await prisma.publishedImage.count()
         const totalPages = Math.ceil(total / limit)
 
-        return new Response(JSON.stringify({ images, total, page, totalPages }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        // include liked flag for authenticated user
+        const session = await getServerSession(authOptions)
+        let imagesOut = images
+        if (session) {
+            const imageIds = images.map(i => i.id)
+            const likes = await prisma.like.findMany({ where: { userId: session.user.id, imageId: { in: imageIds } }, select: { imageId: true } })
+            const likedSet = new Set(likes.map(l => l.imageId))
+            imagesOut = images.map(i => ({ ...i, liked: likedSet.has(i.id) }))
+        }
+
+        return new Response(JSON.stringify({ images: imagesOut, total, page, totalPages }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
         console.error('Feed GET error', err)
         return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
@@ -35,7 +47,7 @@ export async function GET(request) {
 export async function PUT(request) {
     try {
         const body = await request.json()
-        const { id, hearts, action } = body ?? {}
+        const { id, action, toggle } = body ?? {}
 
         if (id === undefined) {
             return new Response(JSON.stringify({ message: 'Missing id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
@@ -46,7 +58,35 @@ export async function PUT(request) {
             return new Response(JSON.stringify({ message: 'Invalid id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
         }
 
-        // If action provided, perform atomic increment/decrement
+        const session = await getServerSession(authOptions)
+        if (!session) {
+            return new Response(JSON.stringify({ message: 'Authentication required' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+        }
+
+        // toggle like for authenticated user when toggle=true
+        if (toggle) {
+            try {
+                const existing = await prisma.like.findUnique({ where: { userId_imageId: { userId: session.user.id, imageId: idNum } } })
+                if (existing) {
+                    const [, updated] = await prisma.$transaction([
+                        prisma.like.delete({ where: { id: existing.id } }),
+                        prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: { decrement: 1 } } }),
+                    ])
+                    return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                } else {
+                    const [, updated] = await prisma.$transaction([
+                        prisma.like.create({ data: { userId: session.user.id, imageId: idNum } }),
+                        prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: { increment: 1 } } }),
+                    ])
+                    return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                }
+            } catch (err) {
+                console.error('Toggle like error', err)
+                return new Response(JSON.stringify({ message: 'Not found or conflict' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+            }
+        }
+
+        // allow atomic increment/decrement when action provided (admin or other use)
         if (action === 'increment' || action === 'decrement') {
             try {
                 const updateData = action === 'increment' ? { hearts: { increment: 1 } } : { hearts: { decrement: 1 } }
@@ -58,23 +98,7 @@ export async function PUT(request) {
             }
         }
 
-        // Fallback: explicit hearts value provided
-        if (hearts === undefined) {
-            return new Response(JSON.stringify({ message: 'Missing hearts or action' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
-        }
-
-        const heartsNum = Number(hearts)
-        if (!Number.isInteger(heartsNum) || heartsNum < 0) {
-            return new Response(JSON.stringify({ message: 'Invalid hearts' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
-        }
-
-        try {
-            const updated = await prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: heartsNum } })
-            return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
-        } catch (err) {
-            console.error('Update error', err)
-            return new Response(JSON.stringify({ message: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
-        }
+        return new Response(JSON.stringify({ message: 'Missing action or toggle' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
         console.error('Feed PUT error', err)
         return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })

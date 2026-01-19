@@ -1,6 +1,8 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession, signIn } from "next-auth/react"
 
 export default function FeedPage() {
     const [page, setPage] = useState(1)
@@ -8,14 +10,7 @@ export default function FeedPage() {
     const [loading, setLoading] = useState(false)
     const [totalPages, setTotalPages] = useState(1)
     const [error, setError] = useState(null)
-    const [likedIds, setLikedIds] = useState(() => {
-        try {
-            const raw = localStorage.getItem('likedImages')
-            return raw ? JSON.parse(raw) : []
-        } catch (e) {
-            return []
-        }
-    })
+    const { data: session } = useSession()
     const [inFlight, setInFlight] = useState(new Set())
 
     useEffect(() => {
@@ -45,24 +40,28 @@ export default function FeedPage() {
     async function toggleHeart(item) {
         if (inFlight.has(item.id)) return
 
-        const isLiked = likedIds.includes(item.id)
+        if (!session) {
+            signIn()
+            return
+        }
+
+        const isLiked = !!item.liked
         // optimistic update
-        const optimistic = images.map(i => i.id === item.id ? { ...i, hearts: i.hearts + (isLiked ? -1 : 1) } : i)
+        const optimistic = images.map(i => i.id === item.id ? { ...i, hearts: i.hearts + (isLiked ? -1 : 1), liked: !isLiked } : i)
         setImages(optimistic)
 
         // mark in-flight
         setInFlight(prev => new Set(prev).add(item.id))
 
         try {
-            const action = isLiked ? 'decrement' : 'increment'
             const res = await fetch('/api/feed', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: item.id, action }),
+                body: JSON.stringify({ id: item.id, toggle: true }),
             })
 
             if (!res.ok) {
-                // revert optimistic and don't change liked state
+                // revert optimistic
                 setImages((prev) => prev.map(i => i.id === item.id ? item : i))
                 return
             }
@@ -71,11 +70,6 @@ export default function FeedPage() {
             if (data) {
                 setImages((prev) => prev.map(i => i.id === data.id ? data : i))
             }
-
-            // update likedIds in localStorage
-            const nextLiked = isLiked ? likedIds.filter(x => x !== item.id) : [...likedIds, item.id]
-            setLikedIds(nextLiked)
-            try { localStorage.setItem('likedImages', JSON.stringify(nextLiked)) } catch (e) { }
         } catch (err) {
             console.error('Heart update error', err)
             setImages((prev) => prev.map(i => i.id === item.id ? item : i))
@@ -110,7 +104,7 @@ export default function FeedPage() {
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                 {
                                     (() => {
-                                        const isLiked = likedIds.includes(img.id)
+                                        const isLiked = !!img.liked
                                         return (
                                             <>
                                                 <button onClick={() => toggleHeart(img)} disabled={inFlight.has(img.id)} style={{ padding: '6px 8px', borderRadius: 6, background: isLiked ? '#ffebee' : undefined }} aria-pressed={isLiked}>{isLiked ? '💖' : '🤍'}</button>

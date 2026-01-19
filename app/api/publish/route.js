@@ -1,4 +1,6 @@
 import { prisma } from '../../../lib/prisma'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '../auth/[...nextauth]/route'
 
 export async function POST(request) {
     try {
@@ -21,7 +23,12 @@ export async function POST(request) {
             return new Response(JSON.stringify({ message: 'prompt must be a string' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
         }
 
-        const created = await prisma.publishedImage.create({ data: { imageUrl: imageUrl.trim(), prompt } })
+        const session = await getServerSession(authOptions)
+        if (!session) {
+            return new Response(JSON.stringify({ message: 'Authentication required' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+        }
+
+        const created = await prisma.publishedImage.create({ data: { imageUrl: imageUrl.trim(), prompt, ownerId: session.user.id } })
 
         return new Response(JSON.stringify(created), { status: 201, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
