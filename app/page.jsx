@@ -1,38 +1,66 @@
+"use client"
+
+import { useState } from "react"
+
 export default function Home() {
+    const [prompt, setPrompt] = useState("")
+    const [loading, setLoading] = useState(false)
+    const [imageUrl, setImageUrl] = useState(null)
+
     return (
         <main style={{
             fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
             minHeight: '100vh',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
             alignItems: 'center',
             padding: 24,
             gap: 24,
         }}>
-            <div style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: 40, margin: 0 }}>Welcome to Next.js!</h1>
-                <p style={{ marginTop: 8, color: '#444' }}>Get started by editing <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 6 }}>app/page.jsx</code></p>
-            </div>
+            <div style={{ width: '100%', maxWidth: 920 }}>
+                <h1 style={{ fontSize: 32, margin: 0 }}>Generate an AI Image</h1>
+                <p style={{ marginTop: 8, color: '#444' }}>Enter a prompt and click Generate.</p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, width: '100%', maxWidth: 920 }}>
-                <a href="https://nextjs.org/docs" style={cardStyle} target="_blank" rel="noreferrer">Docs →<p style={cardDesc}>Find in-depth information about Next.js features and API.</p></a>
-                <a href="https://nextjs.org/learn" style={cardStyle} target="_blank" rel="noreferrer">Learn →<p style={cardDesc}>Learn about Next.js in an interactive course with quizzes!</p></a>
-                <a href="https://github.com/vercel/next.js/tree/canary/examples" style={cardStyle} target="_blank" rel="noreferrer">Examples →<p style={cardDesc}>Discover boilerplates and example projects to jumpstart your app.</p></a>
-                <a href="https://vercel.com/new" style={cardStyle} target="_blank" rel="noreferrer">Deploy →<p style={cardDesc}>Instantly deploy your Next.js site to a shareable URL with Vercel.</p></a>
+                <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
+                    <textarea
+                        aria-label="prompt"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Describe the image you want to generate"
+                        style={{ flex: 1, minHeight: 120, padding: 12, fontSize: 14, borderRadius: 8, border: '1px solid #e6e6e6' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <button disabled={loading || !prompt.trim()} style={buttonStyle}>Generate</button>
+                        <button disabled={!imageUrl} style={{ ...buttonStyle, background: '#eee', color: '#333' }}>Publish</button>
+                        <a href="/feed" style={{ textDecoration: 'none', color: '#0366d6', alignSelf: 'center', marginTop: 8 }}>View Feed</a>
+                    </div>
+                </div>
+
+                <div style={{ marginTop: 18 }}>
+                    {loading && <p>Generating image…</p>}
+                    {!loading && imageUrl && (
+                        <div style={{ marginTop: 12 }}>
+                            <img src={imageUrl} alt="Generated" style={{ maxWidth: '100%', borderRadius: 8 }} />
+                            <p style={{ color: '#666', marginTop: 8 }}>Prompt: {prompt}</p>
+                        </div>
+                    )}
+                    {!loading && !imageUrl && (
+                        <div style={{ marginTop: 12, padding: 18, border: '1px dashed #ddd', borderRadius: 8, color: '#666' }}>
+                            No image generated yet.
+                        </div>
+                    )}
+                </div>
             </div>
         </main>
     )
 }
 
-const cardStyle = {
-    padding: 18,
-    border: '1px solid #e6e6e6',
-    borderRadius: 12,
-    textDecoration: 'none',
-    color: 'inherit',
-    background: 'white',
-    boxShadow: '0 1px 2px rgba(16,24,40,0.03)',
+const buttonStyle = {
+    padding: '10px 14px',
+    borderRadius: 8,
+    border: 'none',
+    background: '#0366d6',
+    color: 'white',
+    cursor: 'pointer',
 }
-
-const cardDesc = { margin: '8px 0 0', color: '#666', fontSize: 14 }
