@@ -35,23 +35,35 @@ export async function GET(request) {
 export async function PUT(request) {
     try {
         const body = await request.json()
-        const { id, hearts } = body ?? {}
+        const { id, hearts, action } = body ?? {}
 
         if (id === undefined) {
             return new Response(JSON.stringify({ message: 'Missing id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
         }
 
-        if (hearts === undefined) {
-            return new Response(JSON.stringify({ message: 'Missing hearts' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
-        }
-
         const idNum = Number(id)
-        const heartsNum = Number(hearts)
-
         if (!Number.isInteger(idNum) || idNum <= 0) {
             return new Response(JSON.stringify({ message: 'Invalid id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
         }
 
+        // If action provided, perform atomic increment/decrement
+        if (action === 'increment' || action === 'decrement') {
+            try {
+                const updateData = action === 'increment' ? { hearts: { increment: 1 } } : { hearts: { decrement: 1 } }
+                const updated = await prisma.publishedImage.update({ where: { id: idNum }, data: updateData })
+                return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
+            } catch (err) {
+                console.error('Atomic update error', err)
+                return new Response(JSON.stringify({ message: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+            }
+        }
+
+        // Fallback: explicit hearts value provided
+        if (hearts === undefined) {
+            return new Response(JSON.stringify({ message: 'Missing hearts or action' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+        }
+
+        const heartsNum = Number(hearts)
         if (!Number.isInteger(heartsNum) || heartsNum < 0) {
             return new Response(JSON.stringify({ message: 'Invalid hearts' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
         }
@@ -60,7 +72,6 @@ export async function PUT(request) {
             const updated = await prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: heartsNum } })
             return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
         } catch (err) {
-            // likely not found
             console.error('Update error', err)
             return new Response(JSON.stringify({ message: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
         }

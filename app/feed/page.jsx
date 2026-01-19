@@ -8,6 +8,15 @@ export default function FeedPage() {
     const [loading, setLoading] = useState(false)
     const [totalPages, setTotalPages] = useState(1)
     const [error, setError] = useState(null)
+    const [likedIds, setLikedIds] = useState(() => {
+        try {
+            const raw = localStorage.getItem('likedImages')
+            return raw ? JSON.parse(raw) : []
+        } catch (e) {
+            return []
+        }
+    })
+    const [inFlight, setInFlight] = useState(new Set())
 
     useEffect(() => {
         fetchPage(page)
@@ -34,26 +43,48 @@ export default function FeedPage() {
     }
 
     async function toggleHeart(item) {
-        const optimistic = images.map(i => i.id === item.id ? { ...i, hearts: item.hearts + 1 } : i)
+        if (inFlight.has(item.id)) return
+
+        const isLiked = likedIds.includes(item.id)
+        // optimistic update
+        const optimistic = images.map(i => i.id === item.id ? { ...i, hearts: i.hearts + (isLiked ? -1 : 1) } : i)
         setImages(optimistic)
+
+        // mark in-flight
+        setInFlight(prev => new Set(prev).add(item.id))
+
         try {
+            const action = isLiked ? 'decrement' : 'increment'
             const res = await fetch('/api/feed', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: item.id, hearts: item.hearts + 1 }),
+                body: JSON.stringify({ id: item.id, action }),
             })
+
             if (!res.ok) {
-                // revert
-                setImages(images)
-            } else {
-                const data = await res.json().catch(() => null)
-                if (data) {
-                    setImages((prev) => prev.map(i => i.id === data.id ? data : i))
-                }
+                // revert optimistic and don't change liked state
+                setImages((prev) => prev.map(i => i.id === item.id ? item : i))
+                return
             }
+
+            const data = await res.json().catch(() => null)
+            if (data) {
+                setImages((prev) => prev.map(i => i.id === data.id ? data : i))
+            }
+
+            // update likedIds in localStorage
+            const nextLiked = isLiked ? likedIds.filter(x => x !== item.id) : [...likedIds, item.id]
+            setLikedIds(nextLiked)
+            try { localStorage.setItem('likedImages', JSON.stringify(nextLiked)) } catch (e) { }
         } catch (err) {
             console.error('Heart update error', err)
-            setImages(images)
+            setImages((prev) => prev.map(i => i.id === item.id ? item : i))
+        } finally {
+            setInFlight(prev => {
+                const copy = new Set(prev)
+                copy.delete(item.id)
+                return copy
+            })
         }
     }
 
@@ -77,8 +108,17 @@ export default function FeedPage() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <small style={{ color: '#666' }}>{new Date(img.createdAt).toLocaleString()}</small>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <button onClick={() => toggleHeart(img)} style={{ padding: '6px 8px', borderRadius: 6 }}>❤️</button>
-                                <span>{img.hearts}</span>
+                                {
+                                    (() => {
+                                        const isLiked = likedIds.includes(img.id)
+                                        return (
+                                            <>
+                                                <button onClick={() => toggleHeart(img)} disabled={inFlight.has(img.id)} style={{ padding: '6px 8px', borderRadius: 6, background: isLiked ? '#ffebee' : undefined }} aria-pressed={isLiked}>{isLiked ? '💖' : '🤍'}</button>
+                                                <span>{img.hearts}</span>
+                                            </>
+                                        )
+                                    })()
+                                }
                             </div>
                         </div>
                     </div>
