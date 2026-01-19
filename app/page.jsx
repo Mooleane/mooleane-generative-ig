@@ -6,6 +6,41 @@ export default function Home() {
     const [prompt, setPrompt] = useState("")
     const [loading, setLoading] = useState(false)
     const [imageUrl, setImageUrl] = useState(null)
+    const [error, setError] = useState(null)
+
+    async function generateImage() {
+        setError(null)
+        setImageUrl(null)
+        setLoading(true)
+        try {
+            const res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            })
+
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                const msg = data?.message || 'Generation failed'
+                setError(msg)
+                setLoading(false)
+                return
+            }
+
+            if (!data?.imageUrl) {
+                setError('No image returned')
+                setLoading(false)
+                return
+            }
+
+            setImageUrl(data.imageUrl)
+        } catch (err) {
+            console.error('Generate error', err)
+            setError('Network error')
+        } finally {
+            setLoading(false)
+        }
+    }
 
     return (
         <main style={{
@@ -31,7 +66,7 @@ export default function Home() {
                         style={{ flex: 1, minHeight: 120, padding: 12, fontSize: 14, borderRadius: 8, border: '1px solid #e6e6e6' }}
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <button disabled={loading || !prompt.trim()} style={buttonStyle}>Generate</button>
+                        <button onClick={generateImage} disabled={loading || !prompt.trim()} style={buttonStyle}>{loading ? 'Generating…' : 'Generate'}</button>
                         <button disabled={!imageUrl} style={{ ...buttonStyle, background: '#eee', color: '#333' }}>Publish</button>
                         <a href="/feed" style={{ textDecoration: 'none', color: '#0366d6', alignSelf: 'center', marginTop: 8 }}>View Feed</a>
                     </div>
@@ -39,6 +74,7 @@ export default function Home() {
 
                 <div style={{ marginTop: 18 }}>
                     {loading && <p>Generating image…</p>}
+                    {error && <p style={{ color: 'crimson' }}>{error}</p>}
                     {!loading && imageUrl && (
                         <div style={{ marginTop: 12 }}>
                             <img src={imageUrl} alt="Generated" style={{ maxWidth: '100%', borderRadius: 8 }} />
@@ -64,3 +100,5 @@ const buttonStyle = {
     color: 'white',
     cursor: 'pointer',
 }
+
+
