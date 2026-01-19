@@ -7,6 +7,8 @@ export default function Home() {
     const [loading, setLoading] = useState(false)
     const [imageUrl, setImageUrl] = useState(null)
     const [error, setError] = useState(null)
+    const [publishing, setPublishing] = useState(false)
+    const [published, setPublished] = useState(null)
 
     async function generateImage() {
         setError(null)
@@ -42,6 +44,31 @@ export default function Home() {
         }
     }
 
+    async function publishImage() {
+        if (!imageUrl) return
+        setPublishing(true)
+        setError(null)
+        try {
+            const res = await fetch('/api/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl, prompt }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                setError(data?.message || 'Publish failed')
+                return
+            }
+
+            setPublished(data)
+        } catch (err) {
+            console.error('Publish error', err)
+            setError('Network error')
+        } finally {
+            setPublishing(false)
+        }
+    }
+
     return (
         <main style={{
             fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
@@ -67,7 +94,7 @@ export default function Home() {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <button onClick={generateImage} disabled={loading || !prompt.trim()} style={buttonStyle}>{loading ? 'Generating…' : 'Generate'}</button>
-                        <button disabled={!imageUrl} style={{ ...buttonStyle, background: '#eee', color: '#333' }}>Publish</button>
+                        <button onClick={publishImage} disabled={!imageUrl || publishing} style={{ ...buttonStyle, background: publishing ? '#ddd' : '#eee', color: publishing ? '#666' : '#333' }}>{publishing ? 'Publishing…' : 'Publish'}</button>
                         <a href="/feed" style={{ textDecoration: 'none', color: '#0366d6', alignSelf: 'center', marginTop: 8 }}>View Feed</a>
                     </div>
                 </div>
@@ -79,6 +106,9 @@ export default function Home() {
                         <div style={{ marginTop: 12 }}>
                             <img src={imageUrl} alt="Generated" style={{ maxWidth: '100%', borderRadius: 8 }} />
                             <p style={{ color: '#666', marginTop: 8 }}>Prompt: {prompt}</p>
+                            {published && (
+                                <p style={{ color: 'green', marginTop: 8 }}>Published (id: {published.id})</p>
+                            )}
                         </div>
                     )}
                     {!loading && !imageUrl && (
