@@ -72,13 +72,13 @@ export async function PUT(request) {
                         prisma.like.delete({ where: { id: existing.id } }),
                         prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: { decrement: 1 } } }),
                     ])
-                    return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                    return new Response(JSON.stringify({ ...updated, liked: false }), { status: 200, headers: { 'Content-Type': 'application/json' } })
                 } else {
                     const [, updated] = await prisma.$transaction([
                         prisma.like.create({ data: { userId: session.user.id, imageId: idNum } }),
                         prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: { increment: 1 } } }),
                     ])
-                    return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                    return new Response(JSON.stringify({ ...updated, liked: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
                 }
             } catch (err) {
                 console.error('Toggle like error', err)
