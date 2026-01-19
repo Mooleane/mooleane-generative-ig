@@ -82,9 +82,36 @@ export default function FeedPage() {
         }
     }
 
+    async function deleteAllPosts() {
+        if (!confirm('Are you sure you want to delete ALL posts? This cannot be undone.')) return
+
+        try {
+            const res = await fetch('/api/feed', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deleteAll: true }),
+            })
+
+            if (res.ok) {
+                setImages([])
+                setTotalPages(1)
+                setPage(1)
+                alert('All posts deleted')
+            } else {
+                alert('Failed to delete posts')
+            }
+        } catch (err) {
+            console.error('Delete all error', err)
+            alert('Error deleting posts')
+        }
+    }
+
     return (
         <main style={{ fontFamily: 'Inter, ui-sans-serif, system-ui', padding: 24, maxWidth: 920, margin: '0 auto' }}>
-            <h1 style={{ fontSize: 28 }}>Feed</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h1 style={{ fontSize: 28 }}>Feed</h1>
+                <button onClick={deleteAllPosts} style={{ padding: '6px 12px', borderRadius: 6, background: '#ffcdd2', color: '#c62828', fontSize: 12, fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>🗑️ DEBUG: Delete All</button>
+            </div>
             <p style={{ color: '#666' }}>Published AI images will appear here.</p>
 
             {loading && <p>Loading…</p>}

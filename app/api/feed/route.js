@@ -104,3 +104,24 @@ export async function PUT(request) {
         return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
     }
 }
+
+export async function DELETE(request) {
+    try {
+        const body = await request.json().catch(() => ({}))
+        const { deleteAll } = body ?? {}
+
+        // Debug endpoint to delete all posts
+        if (deleteAll) {
+            await prisma.$transaction([
+                prisma.like.deleteMany({}),
+                prisma.publishedImage.deleteMany({}),
+            ])
+            return new Response(JSON.stringify({ message: 'All posts deleted' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        }
+
+        return new Response(JSON.stringify({ message: 'Missing deleteAll flag' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+    } catch (err) {
+        console.error('Feed DELETE error', err)
+        return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    }
+}
