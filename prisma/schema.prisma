@@ -17,6 +17,7 @@ model PublishedImage {
   ownerId String? @map("owner_id")
 
   likes Like[]
+  comments Comment[]
 
   @@map("published_images")
 }
@@ -33,6 +34,7 @@ model User {
   sessions Session[]
   likes Like[]
   publishedImages PublishedImage[]
+  comments Comment[]
 
   @@map("users")
 }
@@ -47,6 +49,18 @@ model Like {
 
   @@unique([userId, imageId], map: "user_image_unique")
   @@map("likes")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  text      String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String   @map("author_id")
+  image     PublishedImage @relation(fields: [imageId], references: [id])
+  imageId   Int      @map("image_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("comments")
 }
 
 model Account {
