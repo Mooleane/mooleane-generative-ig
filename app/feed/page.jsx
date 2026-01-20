@@ -229,19 +229,27 @@ export default function FeedPage() {
                                 {!loadingComments[img.id] && (
                                     <>
                                         <div style={{ marginBottom: 12 }}>
-                                            <textarea
-                                                placeholder="Add a comment..."
-                                                value={commentText[img.id] ?? ''}
-                                                onChange={(e) => setCommentText(prev => ({ ...prev, [img.id]: e.target.value }))}
-                                                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #ddd', fontSize: 12, fontFamily: 'inherit', resize: 'vertical', minHeight: 60 }}
-                                            />
-                                            <button
-                                                onClick={() => addComment(img.id)}
-                                                disabled={!commentText[img.id]?.trim() || !session}
-                                                style={{ marginTop: 6, padding: '6px 12px', borderRadius: 6, background: '#007bff', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12 }}
-                                            >
-                                                Post Comment
-                                            </button>
+                                            {session ? (
+                                                <>
+                                                    <textarea
+                                                        placeholder="Add a comment..."
+                                                        value={commentText[img.id] ?? ''}
+                                                        onChange={(e) => setCommentText(prev => ({ ...prev, [img.id]: e.target.value }))}
+                                                        style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #ddd', fontSize: 12, fontFamily: 'inherit', resize: 'vertical', minHeight: 60 }}
+                                                    />
+                                                    <button
+                                                        onClick={() => addComment(img.id)}
+                                                        disabled={!commentText[img.id]?.trim()}
+                                                        style={{ marginTop: 6, padding: '6px 12px', borderRadius: 6, background: '#007bff', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12 }}
+                                                    >
+                                                        Post Comment
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <div>
+                                                    <button onClick={() => router.push('/auth/login')} style={{ padding: '6px 10px', borderRadius: 6 }}>Sign in to comment</button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -252,7 +260,7 @@ export default function FeedPage() {
                                                     <div key={comment.id} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid #f0f0f0' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                                                             <div>
-                                                                <span style={{ fontSize: 12, fontWeight: 500, color: '#333' }}>{comment.author?.name || 'Anonymous'}</span>
+                                                                <span style={{ fontSize: 12, fontWeight: 500, color: '#333' }}>{comment.author?.name || comment.author?.email || 'Anonymous'}</span>
                                                                 <span style={{ fontSize: 11, color: '#999', marginLeft: 8 }}>{new Date(comment.createdAt).toLocaleString()}</span>
                                                             </div>
                                                             {session?.id === comment.authorId && (

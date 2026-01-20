@@ -13,7 +13,7 @@ export async function GET(request) {
         const comments = await prisma.comment.findMany({
             where: { imageId },
             orderBy: { createdAt: 'desc' },
-            include: { author: { select: { id: true, name: true } } },
+            include: { author: { select: { id: true, name: true, email: true } } },
         })
 
         return new Response(JSON.stringify({ comments }), { status: 200, headers: { 'Content-Type': 'application/json' } })
@@ -37,7 +37,7 @@ export async function POST(request) {
             return new Response(JSON.stringify({ message: 'Missing imageId or text' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
         }
 
-        const created = await prisma.comment.create({ data: { imageId: Number(imageId), text: text.trim(), authorId: payload.id }, include: { author: { select: { id: true, name: true } } } })
+        const created = await prisma.comment.create({ data: { imageId: Number(imageId), text: text.trim(), authorId: payload.id }, include: { author: { select: { id: true, name: true, email: true } } } })
 
         return new Response(JSON.stringify(created), { status: 201, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
