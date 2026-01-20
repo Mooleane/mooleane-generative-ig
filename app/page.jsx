@@ -1,10 +1,17 @@
 "use client"
 
-import { useState } from "react"
-import { useSession, signIn, signOut } from "next-auth/react"
+import { useState, useEffect } from "react"
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
-    const { data: session } = useSession()
+    const [session, setSession] = useState(null)
+    const router = useRouter()
+
+    useEffect(() => {
+        let mounted = true
+        fetch('/api/auth/session').then(r => r.json()).then(d => { if (mounted) setSession(d.session?.user ?? null) }).catch(() => { })
+        return () => { mounted = false }
+    }, [])
     const [prompt, setPrompt] = useState("")
     const [loading, setLoading] = useState(false)
     const [imageUrl, setImageUrl] = useState(null)
@@ -96,7 +103,7 @@ export default function Home() {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <button onClick={generateImage} disabled={loading || !prompt.trim()} style={buttonStyle}>{loading ? 'Generating…' : 'Generate'}</button>
-                        <button onClick={session ? publishImage : () => signIn()} disabled={!imageUrl || publishing} style={{ ...buttonStyle, background: publishing ? '#ddd' : '#eee', color: publishing ? '#666' : '#333' }}>{session ? (publishing ? 'Publishing…' : 'Publish') : 'Sign in to publish'}</button>
+                        <button onClick={session ? publishImage : () => router.push('/auth/login')} disabled={!imageUrl || publishing} style={{ ...buttonStyle, background: publishing ? '#ddd' : '#eee', color: publishing ? '#666' : '#333' }}>{session ? (publishing ? 'Publishing…' : 'Publish') : 'Sign in to publish'}</button>
                         <a href="/feed" style={{ textDecoration: 'none', color: '#0366d6', alignSelf: 'center', marginTop: 8 }}>View Feed</a>
                     </div>
                 </div>
@@ -104,13 +111,13 @@ export default function Home() {
                 <div style={{ marginTop: 8 }}>
                     {session ? (
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <img src={session.user.image || ''} alt="avatar" style={{ width: 32, height: 32, borderRadius: 999 }} />
-                            <span style={{ color: '#333' }}>Signed in as {session.user.email || session.user.name}</span>
-                            <button onClick={() => signOut()} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6 }}>Sign out</button>
+                            <img src={session.image ?? null} alt="avatar" style={{ width: 32, height: 32, borderRadius: 999 }} />
+                            <span style={{ color: '#333' }}>Signed in as {session.email || session.name}</span>
+                            <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); setSession(null) }} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6 }}>Sign out</button>
                         </div>
                     ) : (
                         <div>
-                            <button onClick={() => signIn()} style={{ padding: '6px 10px', borderRadius: 6 }}>Sign in with Google</button>
+                            <button onClick={() => router.push('/auth/login')} style={{ padding: '6px 10px', borderRadius: 6 }}>Sign in</button>
                         </div>
                     )}
                 </div>

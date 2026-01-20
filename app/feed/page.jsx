@@ -2,7 +2,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSession, signIn } from "next-auth/react"
+import { useRouter } from 'next/navigation'
 
 export default function FeedPage() {
     const [page, setPage] = useState(1)
@@ -10,12 +10,22 @@ export default function FeedPage() {
     const [loading, setLoading] = useState(false)
     const [totalPages, setTotalPages] = useState(1)
     const [error, setError] = useState(null)
-    const { data: session } = useSession()
+    const [session, setSession] = useState(null)
     const [inFlight, setInFlight] = useState(new Set())
+    const router = useRouter()
 
     useEffect(() => {
         fetchPage(page)
     }, [page])
+
+    useEffect(() => {
+        let mounted = true
+        fetch('/api/auth/session')
+            .then(r => r.json())
+            .then(d => { if (mounted) setSession(d.session?.user ?? null) })
+            .catch(() => { })
+        return () => { mounted = false }
+    }, [])
 
     async function fetchPage(p = 1) {
         setLoading(true)
@@ -41,7 +51,7 @@ export default function FeedPage() {
         if (inFlight.has(item.id)) return
 
         if (!session) {
-            signIn()
+            router.push('/auth/login')
             return
         }
 

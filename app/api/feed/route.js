@@ -1,6 +1,5 @@
 import { prisma } from '../../../lib/prisma'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { getTokenFromRequest, verifyToken } from '../../../lib/auth'
 
 export async function GET(request) {
     try {
@@ -27,12 +26,13 @@ export async function GET(request) {
         const total = await prisma.publishedImage.count()
         const totalPages = Math.ceil(total / limit)
 
-        // include liked flag for authenticated user
-        const session = await getServerSession(authOptions)
+        // include liked flag for authenticated user (using token cookie)
+        const token = getTokenFromRequest(request)
+        const payload = token ? verifyToken(token) : null
         let imagesOut = images
-        if (session) {
+        if (payload?.id) {
             const imageIds = images.map(i => i.id)
-            const likes = await prisma.like.findMany({ where: { userId: session.user.id, imageId: { in: imageIds } }, select: { imageId: true } })
+            const likes = await prisma.like.findMany({ where: { userId: payload.id, imageId: { in: imageIds } }, select: { imageId: true } })
             const likedSet = new Set(likes.map(l => l.imageId))
             imagesOut = images.map(i => ({ ...i, liked: likedSet.has(i.id) }))
         }
@@ -58,15 +58,16 @@ export async function PUT(request) {
             return new Response(JSON.stringify({ message: 'Invalid id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
         }
 
-        const session = await getServerSession(authOptions)
-        if (!session) {
+        const token = getTokenFromRequest(request)
+        const payload = token ? verifyToken(token) : null
+        if (!payload?.id) {
             return new Response(JSON.stringify({ message: 'Authentication required' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
         }
 
         // toggle like for authenticated user when toggle=true
         if (toggle) {
             try {
-                const existing = await prisma.like.findUnique({ where: { userId_imageId: { userId: session.user.id, imageId: idNum } } })
+                const existing = await prisma.like.findUnique({ where: { userId_imageId: { userId: payload.id, imageId: idNum } } })
                 if (existing) {
                     const [, updated] = await prisma.$transaction([
                         prisma.like.delete({ where: { id: existing.id } }),
@@ -75,7 +76,7 @@ export async function PUT(request) {
                     return new Response(JSON.stringify({ ...updated, liked: false }), { status: 200, headers: { 'Content-Type': 'application/json' } })
                 } else {
                     const [, updated] = await prisma.$transaction([
-                        prisma.like.create({ data: { userId: session.user.id, imageId: idNum } }),
+                        prisma.like.create({ data: { userId: payload.id, imageId: idNum } }),
                         prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: { increment: 1 } } }),
                     ])
                     return new Response(JSON.stringify({ ...updated, liked: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
