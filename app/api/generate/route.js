@@ -1,3 +1,7 @@
+import { promises as fs } from 'fs'
+import { join } from 'path'
+import { randomUUID } from 'crypto'
+
 export async function POST(request) {
     try {
         const body = await request.json()
@@ -43,7 +47,24 @@ export async function POST(request) {
             return new Response(JSON.stringify({ message: 'No image returned from OpenAI', details: json }), { status: 500, headers: { 'Content-Type': 'application/json' } })
         }
 
-        return new Response(JSON.stringify({ imageUrl, prompt: trimmed }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        // Download the image from OpenAI
+        const imageRes = await fetch(imageUrl)
+        if (!imageRes.ok) {
+            console.error('Failed to download image from OpenAI')
+            return new Response(JSON.stringify({ message: 'Failed to download image' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+        }
+
+        // Makes the image a random filename
+        const buffer = await imageRes.arrayBuffer()
+        const filename = `${randomUUID()}.png`
+        const filepath = join(process.cwd(), 'public', 'images', filename)
+
+        // Save image to public folder
+        await fs.writeFile(filepath, Buffer.from(buffer))
+
+        const savedImageUrl = `/images/${filename}`
+
+        return new Response(JSON.stringify({ imageUrl: savedImageUrl, prompt: trimmed }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
         console.error('Generate handler error', err)
         return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
