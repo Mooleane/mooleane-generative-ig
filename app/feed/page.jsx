@@ -181,7 +181,10 @@ export default function FeedPage() {
         <main style={{ fontFamily: 'Inter, ui-sans-serif, system-ui', padding: 24, maxWidth: 920, margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h1 style={{ fontSize: 28 }}>Feed</h1>
-                <button onClick={deleteAllPosts} style={{ padding: '6px 12px', borderRadius: 6, background: '#ffcdd2', color: '#c62828', fontSize: 12, fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>🗑️ DEBUG: Delete All</button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button onClick={() => router.push('/')} style={{ padding: '6px 12px', borderRadius: 6, background: '#e6f4ea', color: '#055a28', fontSize: 12, border: 'none', cursor: 'pointer' }}>🔙 Generate</button>
+                    <button onClick={deleteAllPosts} style={{ padding: '6px 12px', borderRadius: 6, background: '#ffcdd2', color: '#c62828', fontSize: 12, fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>🗑️ DEBUG: Delete All</button>
+                </div>
             </div>
             <p style={{ color: '#666' }}>Published AI images will appear here.</p>
 
