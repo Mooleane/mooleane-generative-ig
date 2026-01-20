@@ -1,6 +1,9 @@
 import { prisma } from '../../../lib/prisma'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../auth/[...nextauth]/route'
+import { promises as fs } from 'fs'
+import { join } from 'path'
+import { randomUUID } from 'crypto'
 
 export async function POST(request) {
     try {
@@ -28,7 +31,27 @@ export async function POST(request) {
             return new Response(JSON.stringify({ message: 'Authentication required' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
         }
 
-        const created = await prisma.publishedImage.create({ data: { imageUrl: imageUrl.trim(), prompt, ownerId: session.user.id } })
+        // Download and save the image from the temporary URL
+        let finalImageUrl = imageUrl.trim()
+        try {
+            const imageRes = await fetch(finalImageUrl)
+            if (imageRes.ok) {
+                const buffer = await imageRes.arrayBuffer()
+                const filename = `${randomUUID()}.png`
+                const filepath = join(process.cwd(), 'public', 'images', filename)
+
+                // Save image to public folder
+                await fs.writeFile(filepath, Buffer.from(buffer))
+
+                // Use the local URL instead of the temporary one
+                finalImageUrl = `/images/${filename}`
+            }
+        } catch (err) {
+            console.error('Failed to download and save image', err)
+            // If saving fails, still proceed with the original URL
+        }
+
+        const created = await prisma.publishedImage.create({ data: { imageUrl: finalImageUrl, prompt, ownerId: session.user.id } })
 
         return new Response(JSON.stringify(created), { status: 201, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
