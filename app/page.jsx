@@ -130,7 +130,7 @@ export default function Home() {
                             <img src={imageUrl} alt="Generated" style={{ maxWidth: '100%', borderRadius: 8 }} />
                             <p style={{ color: '#666', marginTop: 8 }}>Prompt: {prompt}</p>
                             {published && (
-                                <p style={{ color: 'green', marginTop: 8 }}>Published (id: {published.id})</p>
+                                <p style={{ color: 'green', marginTop: 8 }}>Published</p>
                             )}
                         </div>
                     )}
