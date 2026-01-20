@@ -1,7 +1,8 @@
 import { prisma } from '../../../../lib/prisma'
 
-export async function GET(request, { params }) {
+export async function GET(request, context) {
     try {
+        const params = await context.params
         const id = Number(params.id)
         if (!Number.isInteger(id) || id <= 0) {
             return new Response(JSON.stringify({ message: 'Invalid id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })

@@ -22,7 +22,7 @@ export async function GET(request) {
 
         const skip = (page - 1) * limit
 
-        const images = await prisma.publishedImage.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } })
+        const images = await prisma.publishedImage.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' }, include: { owner: { select: { id: true, name: true, email: true } } } })
         const total = await prisma.publishedImage.count()
         const totalPages = Math.ceil(total / limit)
 
@@ -44,6 +44,8 @@ export async function GET(request) {
             hearts: i.hearts,
             createdAt: i.createdAt,
             ownerId: i.ownerId ?? null,
+            ownerName: i.owner?.name ?? null,
+            ownerEmail: i.owner?.email ?? null,
             stored: !!i.stored,
             liked: likedSet.has(i.id),
         }))
@@ -150,18 +152,48 @@ export async function PUT(request) {
 export async function DELETE(request) {
     try {
         const body = await request.json().catch(() => ({}))
-        const { deleteAll } = body ?? {}
+        const { deleteAll, id } = body ?? {}
 
         // Debug endpoint to delete all posts
         if (deleteAll) {
             await prisma.$transaction([
                 prisma.like.deleteMany({}),
+                prisma.comment.deleteMany({}),
                 prisma.publishedImage.deleteMany({}),
             ])
             return new Response(JSON.stringify({ message: 'All posts deleted' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
         }
 
-        return new Response(JSON.stringify({ message: 'Missing deleteAll flag' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+        // Delete a single post by id (owner only)
+        if (id !== undefined) {
+            const idNum = Number(id)
+            if (!Number.isInteger(idNum) || idNum <= 0) {
+                return new Response(JSON.stringify({ message: 'Invalid id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+            }
+
+            const token = getTokenFromRequest(request)
+            const payload = token ? verifyToken(token) : null
+            if (!payload?.id) {
+                return new Response(JSON.stringify({ message: 'Authentication required' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+            }
+
+            const img = await prisma.publishedImage.findUnique({ where: { id: idNum } })
+            if (!img) return new Response(JSON.stringify({ message: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+
+            if (img.ownerId !== payload.id) {
+                return new Response(JSON.stringify({ message: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+            }
+
+            await prisma.$transaction([
+                prisma.like.deleteMany({ where: { imageId: idNum } }),
+                prisma.comment.deleteMany({ where: { imageId: idNum } }),
+                prisma.publishedImage.delete({ where: { id: idNum } }),
+            ])
+
+            return new Response(JSON.stringify({ message: 'Deleted', id: idNum }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        }
+
+        return new Response(JSON.stringify({ message: 'Missing deleteAll flag or id' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
         console.error('Feed DELETE error', err)
         return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })

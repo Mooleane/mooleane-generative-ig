@@ -154,27 +154,7 @@ export default function FeedPage() {
     }
 
     async function deleteAllPosts() {
-        if (!confirm('Are you sure you want to delete ALL posts? This cannot be undone.')) return
-
-        try {
-            const res = await fetch('/api/feed', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deleteAll: true }),
-            })
-
-            if (res.ok) {
-                setImages([])
-                setTotalPages(1)
-                setPage(1)
-                alert('All posts deleted')
-            } else {
-                alert('Failed to delete posts')
-            }
-        } catch (err) {
-            console.error('Delete all error', err)
-            alert('Error deleting posts')
-        }
+        // removed debug delete-all handler
     }
 
     return (
@@ -183,7 +163,6 @@ export default function FeedPage() {
                 <h1 style={{ fontSize: 28 }}>Feed</h1>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => router.push('/')} style={{ padding: '6px 12px', borderRadius: 6, background: '#e6f4ea', color: '#055a28', fontSize: 12, border: 'none', cursor: 'pointer' }}>🔙 Generate</button>
-                    <button onClick={deleteAllPosts} style={{ padding: '6px 12px', borderRadius: 6, background: '#ffcdd2', color: '#c62828', fontSize: 12, fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>🗑️ DEBUG: Delete All</button>
                 </div>
             </div>
             <p style={{ color: '#666' }}>Published AI images will appear here.</p>
@@ -198,6 +177,33 @@ export default function FeedPage() {
 
                 {images.map((img) => (
                     <div key={img.id} style={{ border: '1px solid #eee', borderRadius: 8, padding: 8, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{ fontSize: 13, color: '#222', fontWeight: 600 }}>
+                                {img.ownerName || img.ownerEmail || 'Anonymous'}
+                            </div>
+                            {session?.id === img.ownerId && (
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('Delete this post?')) return
+                                        try {
+                                            const res = await fetch('/api/feed', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: img.id }) })
+                                            if (res.ok) {
+                                                setImages(prev => prev.filter(p => p.id !== img.id))
+                                            } else {
+                                                const d = await res.json().catch(() => ({}))
+                                                alert(d?.message || 'Failed to delete')
+                                            }
+                                        } catch (err) {
+                                            console.error('Delete post error', err)
+                                            alert('Error deleting post')
+                                        }
+                                    }}
+                                    style={{ padding: '6px 8px', borderRadius: 6, background: '#ffcdd2', color: '#c62828', border: 'none', cursor: 'pointer' }}
+                                >
+                                    Delete
+                                </button>
+                            )}
+                        </div>
                         {
                             (() => {
                                 const src = img.imageUrl || `/api/images/${img.id}`
