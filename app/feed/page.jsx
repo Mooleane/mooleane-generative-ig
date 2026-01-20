@@ -198,7 +198,12 @@ export default function FeedPage() {
 
                 {images.map((img) => (
                     <div key={img.id} style={{ border: '1px solid #eee', borderRadius: 8, padding: 8, display: 'flex', flexDirection: 'column' }}>
-                        <img src={img.imageUrl} alt={img.prompt} style={{ width: '100%', borderRadius: 6, marginBottom: 8 }} />
+                        {
+                            (() => {
+                                const src = img.imageUrl || `/api/images/${img.id}`
+                                return <img src={src} alt={img.prompt} style={{ width: '100%', borderRadius: 6, marginBottom: 8 }} />
+                            })()
+                        }
                         <p style={{ color: '#333', fontSize: 14, margin: '0 0 8px', fontWeight: 500 }}>{img.prompt}</p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                             <small style={{ color: '#666' }}>{new Date(img.createdAt).toLocaleString()}</small>

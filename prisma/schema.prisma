@@ -9,6 +9,9 @@ datasource db {
 model PublishedImage {
   id        Int      @id @default(autoincrement())
   imageUrl  String   @map("image_url")
+  imageData Bytes?  @map("image_data")
+  imageMime String? @map("image_mime")
+  stored    Boolean @default(false)
   prompt    String
   hearts    Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")

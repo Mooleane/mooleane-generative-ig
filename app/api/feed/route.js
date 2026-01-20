@@ -29,15 +29,26 @@ export async function GET(request) {
         // include liked flag for authenticated user (using token cookie)
         const token = getTokenFromRequest(request)
         const payload = token ? verifyToken(token) : null
-        let imagesOut = images
+        // sanitize images for JSON: do not include raw binary data
+        const imageIds = images.map(i => i.id)
+        let likedSet = new Set()
         if (payload?.id) {
-            const imageIds = images.map(i => i.id)
             const likes = await prisma.like.findMany({ where: { userId: payload.id, imageId: { in: imageIds } }, select: { imageId: true } })
-            const likedSet = new Set(likes.map(l => l.imageId))
-            imagesOut = images.map(i => ({ ...i, liked: likedSet.has(i.id) }))
+            likedSet = new Set(likes.map(l => l.imageId))
         }
 
-        return new Response(JSON.stringify({ images: imagesOut, total, page, totalPages }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        const imagesSanitized = images.map(i => ({
+            id: i.id,
+            imageUrl: i.imageUrl ? i.imageUrl : `/api/images/${i.id}`,
+            prompt: i.prompt,
+            hearts: i.hearts,
+            createdAt: i.createdAt,
+            ownerId: i.ownerId ?? null,
+            stored: !!i.stored,
+            liked: likedSet.has(i.id),
+        }))
+
+        return new Response(JSON.stringify({ images: imagesSanitized, total, page, totalPages }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     } catch (err) {
         console.error('Feed GET error', err)
         return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
@@ -73,13 +84,33 @@ export async function PUT(request) {
                         prisma.like.delete({ where: { id: existing.id } }),
                         prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: { decrement: 1 } } }),
                     ])
-                    return new Response(JSON.stringify({ ...updated, liked: false }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                    const out = {
+                        id: updated.id,
+                        imageUrl: updated.imageUrl ? updated.imageUrl : `/api/images/${updated.id}`,
+                        prompt: updated.prompt,
+                        hearts: updated.hearts,
+                        createdAt: updated.createdAt,
+                        ownerId: updated.ownerId ?? null,
+                        stored: !!updated.stored,
+                        liked: false,
+                    }
+                    return new Response(JSON.stringify(out), { status: 200, headers: { 'Content-Type': 'application/json' } })
                 } else {
                     const [, updated] = await prisma.$transaction([
                         prisma.like.create({ data: { userId: payload.id, imageId: idNum } }),
                         prisma.publishedImage.update({ where: { id: idNum }, data: { hearts: { increment: 1 } } }),
                     ])
-                    return new Response(JSON.stringify({ ...updated, liked: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                    const out = {
+                        id: updated.id,
+                        imageUrl: updated.imageUrl ? updated.imageUrl : `/api/images/${updated.id}`,
+                        prompt: updated.prompt,
+                        hearts: updated.hearts,
+                        createdAt: updated.createdAt,
+                        ownerId: updated.ownerId ?? null,
+                        stored: !!updated.stored,
+                        liked: true,
+                    }
+                    return new Response(JSON.stringify(out), { status: 200, headers: { 'Content-Type': 'application/json' } })
                 }
             } catch (err) {
                 console.error('Toggle like error', err)
@@ -92,7 +123,17 @@ export async function PUT(request) {
             try {
                 const updateData = action === 'increment' ? { hearts: { increment: 1 } } : { hearts: { decrement: 1 } }
                 const updated = await prisma.publishedImage.update({ where: { id: idNum }, data: updateData })
-                return new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                const out = {
+                    id: updated.id,
+                    imageUrl: updated.imageUrl ? updated.imageUrl : `/api/images/${updated.id}`,
+                    prompt: updated.prompt,
+                    hearts: updated.hearts,
+                    createdAt: updated.createdAt,
+                    ownerId: updated.ownerId ?? null,
+                    stored: !!updated.stored,
+                    liked: false,
+                }
+                return new Response(JSON.stringify(out), { status: 200, headers: { 'Content-Type': 'application/json' } })
             } catch (err) {
                 console.error('Atomic update error', err)
                 return new Response(JSON.stringify({ message: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
